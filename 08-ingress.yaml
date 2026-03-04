@@ -1,0 +1,48 @@
+# ─────────────────────────────────────────
+# Ingress principal — Traefik (K3s)
+# ─────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: osrm-ingress
+  namespace: osrm
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    # API pública — passa pelo Kong (auth + rate limit)
+    - host: api.seudominio.com.br
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kong-proxy-svc
+                port:
+                  number: 8000
+
+    # Painel Keycloak — gerenciar usuários e planos
+    - host: auth.seudominio.com.br
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak-svc
+                port:
+                  number: 8080
+
+    # Frontend do mapa (opcional)
+    - host: map.seudominio.com.br
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: osrm-frontend-svc
+                port:
+                  number: 9966

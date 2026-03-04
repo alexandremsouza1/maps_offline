@@ -1,0 +1,175 @@
+# ─────────────────────────────────────────
+# Job — Download dos dados OSRM
+# ─────────────────────────────────────────
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: osrm-data-loader
+  namespace: osrm
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: osrm-downloader
+          image: curlimages/curl:latest
+          command:
+            - sh
+            - -c
+            - |
+              echo "==> Baixando osrm-data.tar.gz..."
+              curl -L --progress-bar -o /data/osrm-data.tar.gz "${DATA_URL}"
+              echo "==> Extraindo..."
+              cd /data && tar -xzf osrm-data.tar.gz
+              rm /data/osrm-data.tar.gz
+              echo "==> Concluído!"
+              ls -lh /data/
+          env:
+            - name: DATA_URL
+              valueFrom:
+                secretKeyRef:
+                  name: osrm-data-secret
+                  key: DATA_URL
+          volumeMounts:
+            - name: osrm-data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: osrm-data
+          persistentVolumeClaim:
+            claimName: osrm-data-pvc
+---
+# ─────────────────────────────────────────
+# OSRM Backend
+# ─────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: osrm-backend
+  namespace: osrm
+  labels:
+    app: osrm-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: osrm-backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: osrm-backend
+    spec:
+      containers:
+        - name: osrm-backend
+          image: ghcr.io/project-osrm/osrm-backend:latest
+          command:
+            - osrm-routed
+            - --algorithm
+            - mld
+            - --max-table-size
+            - "500"
+            - --max-matching-size
+            - "100"
+            - /data/brazil-latest.osrm
+          ports:
+            - containerPort: 5000
+              name: http
+          volumeMounts:
+            - name: osrm-data
+              mountPath: /data
+              readOnly: true
+          resources:
+            requests:
+              memory: "4Gi"
+              cpu: "500m"
+            limits:
+              memory: "8Gi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: osrm-data
+          persistentVolumeClaim:
+            claimName: osrm-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: osrm-backend-svc
+  namespace: osrm
+spec:
+  selector:
+    app: osrm-backend
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+  type: ClusterIP
+---
+# ─────────────────────────────────────────
+# OSRM Frontend
+# ─────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: osrm-frontend
+  namespace: osrm
+  labels:
+    app: osrm-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: osrm-frontend
+  template:
+    metadata:
+      labels:
+        app: osrm-frontend
+    spec:
+      containers:
+        - name: osrm-frontend
+          image: osrm/osrm-frontend:latest
+          ports:
+            - containerPort: 9966
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: osrm-frontend-svc
+  namespace: osrm
+spec:
+  selector:
+    app: osrm-frontend
+  ports:
+    - port: 9966
+      targetPort: 9966
+  type: ClusterIP

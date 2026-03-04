@@ -1,0 +1,143 @@
+# ─────────────────────────────────────────
+# PostgreSQL — Keycloak
+# ─────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-keycloak
+  namespace: osrm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-keycloak
+  template:
+    metadata:
+      labels:
+        app: postgres-keycloak
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "keycloak"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-keycloak-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-keycloak-svc
+  namespace: osrm
+spec:
+  selector:
+    app: postgres-keycloak
+  ports:
+    - port: 5432
+      targetPort: 5432
+  type: ClusterIP
+---
+# ─────────────────────────────────────────
+# PostgreSQL — Kong
+# ─────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-kong
+  namespace: osrm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-kong
+  template:
+    metadata:
+      labels:
+        app: postgres-kong
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: kong-secret
+                  key: KONG_PG_DATABASE
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: kong-secret
+                  key: KONG_PG_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kong-secret
+                  key: KONG_PG_PASSWORD
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "kong"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-kong-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-kong-svc
+  namespace: osrm
+spec:
+  selector:
+    app: postgres-kong
+  ports:
+    - port: 5432
+      targetPort: 5432
+  type: ClusterIP

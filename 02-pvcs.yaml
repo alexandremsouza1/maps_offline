@@ -1,0 +1,41 @@
+# Volume para dados do OSRM
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: osrm-data-pvc
+  namespace: osrm
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: local-path
+---
+# Volume para PostgreSQL do Keycloak
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-keycloak-pvc
+  namespace: osrm
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-path
+---
+# Volume para PostgreSQL do Kong
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-kong-pvc
+  namespace: osrm
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-path
