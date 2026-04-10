@@ -208,3 +208,16 @@ curl -X POST "http://localhost:8001/consumers/plan-basic/key-auth" \
 ```
 
 3. Quando o plano vencer, desabilita o usuário no Keycloak e remove a API Key no Kong.
+
+
+
+
+
+
+DELETAR TUDO
+
+kubectl delete namespace osrm
+
+VERIFICAR SE DELETOU TUDO
+
+kubectl get namespace osrm

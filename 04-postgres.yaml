@@ -49,9 +49,11 @@ spec:
               cpu: "500m"
           livenessProbe:
             exec:
-              command: ["pg_isready", "-U", "keycloak"]
-            initialDelaySeconds: 20
+              # Usa a variável de ambiente para não depender de usuário hardcoded
+              command: ["sh", "-c", "pg_isready -U $POSTGRES_USER"]
+            initialDelaySeconds: 30
             periodSeconds: 10
+            failureThreshold: 5
       volumes:
         - name: postgres-data
           persistentVolumeClaim:
@@ -121,9 +123,11 @@ spec:
               cpu: "500m"
           livenessProbe:
             exec:
-              command: ["pg_isready", "-U", "kong"]
-            initialDelaySeconds: 20
+              # Usa a variável de ambiente para não depender de usuário hardcoded
+              command: ["sh", "-c", "pg_isready -U $POSTGRES_USER"]
+            initialDelaySeconds: 30
             periodSeconds: 10
+            failureThreshold: 5
       volumes:
         - name: postgres-data
           persistentVolumeClaim:

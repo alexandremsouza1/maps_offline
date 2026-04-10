@@ -1,3 +1,9 @@
+# ─────────────────────────────────────────
+# PersistentVolumeClaims
+# storageClassName não definido → usa o default do cluster automaticamente
+# (funciona em Docker Desktop, Rancher Desktop, K3s, GKE, EKS, etc.)
+# ─────────────────────────────────────────
+
 # Volume para dados do OSRM
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -10,7 +16,6 @@ spec:
   resources:
     requests:
       storage: 20Gi
-  storageClassName: local-path
 ---
 # Volume para PostgreSQL do Keycloak
 apiVersion: v1
@@ -24,7 +29,6 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: local-path
 ---
 # Volume para PostgreSQL do Kong
 apiVersion: v1
@@ -38,4 +42,3 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: local-path
